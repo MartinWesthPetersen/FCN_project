@@ -4,3 +4,5 @@ sandbox.py
 *.npy
 *.bat
 FASSEG-repository-master/*
+FASSEG_model1_3/*
+__*

@@ -77,11 +77,3 @@ test_scores = unet.eval_pred(test_predictions, test_labels, 6)
 avg_score = (1 / len(test_scores)) * np.sum(test_scores)
 print(test_scores)
 print(avg_score)
-
-
-
-#f, spl = plt.subplots(2,4)
-#for i in range(0, 4):
-#    spl[0,i].imshow(train_labels_less[i,:,:])
-#    spl[1,i].imshow(train_predictions[i,:,:])
-#    spl[1,i].set_title("Dice: " + str(round(scores[i], 3)))
