@@ -11,7 +11,7 @@ import unet
 import image_processing as impro
 
 # Determines the device to run on
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
 data_path = "FASSEG-repository-master/V2/Test_RGB/"
 label_path = "FASSEG-repository-masterV2/Test_Labels/"
@@ -69,6 +69,13 @@ train_scores = unet.eval_pred(train_predictions, train_labels, 6)
 train_avg_score = (1 / len(train_scores)) * np.sum(train_scores)
 print(train_scores)
 print(train_avg_score)
+#%%
+f, spl= plt.subplots(3,4)
+for i in range(0, 4):
+    j = i + 4
+    spl[0,i].imshow(test_data[j,:,:,:])
+    spl[1,i].imshow(test_labels[j,:,:])
+    spl[2,i].imshow(test_predictions[j,:,:,])
 
 #%%
 # Test scores

@@ -1,4 +1,4 @@
-testmappe/*
+MICCAI_data/*
 *~
 sandbox.py
 *.npy
@@ -6,3 +6,8 @@ sandbox.py
 FASSEG-repository-master/*
 FASSEG_model1_3/*
 __*
+miccai_model.py
+*.mat
+*.txt
+MICCAI_model*
+MICsmsv1

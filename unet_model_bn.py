@@ -154,12 +154,12 @@ def model_fn(features, labels, mode, params):
         channels = num_channels_base * 2 ** s
         conv1 = add_conv_layer(prev_tensor, k_size, channels, conv_padding)
         conv2 = add_conv_layer(conv1, k_size, channels, conv_padding)
-        #bn = add_batch_norm_layer(conv2, mode, bn_decay)
-        pool = add_pool_layer(conv2, scaling_factor, scaling_factor)
+        bn = add_batch_norm_layer(conv2, mode, bn_decay)
+        pool = add_pool_layer(bn, scaling_factor, scaling_factor)
         prev_tensor = pool
         
         # Collect tensors that also "skip" to deconvolution half of FCN
-        layers_to_skip.append(conv2)
+        layers_to_skip.append(bn)
     
     # Botton 2 convolution layers before upsampling
     channels = num_channels_base * 2 ** (scale_depth - 1)
@@ -176,14 +176,14 @@ def model_fn(features, labels, mode, params):
         conv_up = add_conv_layer(up_samp, up_sampling_conv_ksize, 
                                  channels_after_up, up_conv_padding)
         
-        #bn1 = add_batch_norm_layer(conv_up, mode, bn_decay)
+        bn1 = add_batch_norm_layer(conv_up, mode, bn_decay)
         # Use "skipped" tensor here
-        cropped = crop_layer(layers_to_skip[s - 1], conv_up)
-        merge = merge_layers(conv_up, cropped)
+        cropped = crop_layer(layers_to_skip[s - 1], bn1)
+        merge = merge_layers(bn1, cropped)
         conv1 = add_conv_layer(merge, k_size, channels_after_up, conv_padding)
         conv2 = add_conv_layer(conv1, k_size, channels_after_up, conv_padding)
-        #bn2 = add_batch_norm_layer(conv2, mode, bn_decay)
-        prev_tensor = conv2
+        bn2 = add_batch_norm_layer(conv2, mode, bn_decay)
+        prev_tensor = bn2
 
 
     # Add convolution layer to score classes

@@ -6,14 +6,14 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
-import unet_model
+import unet_model_bn as unet_model
 
 #%%
 def create_unet_model(data, num_classes, conv_ksize, num_channels_base, 
                       scale_depth, learning_rate, bn_decay, model_dir_name):
     
     (_, data_height, data_width, num_in_channels) = data.shape    
-    tf.reset_default_graph()
+    #tf.reset_default_graph()
     model_params = {"data_height" : data_height, 
                     "data_width" : data_width, 
                     "num_in_channels" : num_in_channels, 
@@ -65,6 +65,7 @@ def predict_unet_model(data, classifier):
     data_flat = np.reshape(data, (b, h * w, c)).astype(np.float32)
     predictions = np.zeros((b, h, w))
     for i in range(0, b):
+        print("Predicting: " + str(i) + " of " + str(b))
         image = np.expand_dims(data_flat[i,:,:], axis = 0)
         prediction_fun = tf.estimator.inputs.numpy_input_fn(
                 x = {"x" : image},
@@ -82,20 +83,41 @@ def accuracy(pred, true):
                     (pred.shape[1] * pred.shape[2]))
     return accs
 
+
 def mean_dice(pred, true, num_classes):
-    D = np.zeros(num_classes)
+    D = []
     for i in range(0, num_classes):
         pos_true = true == i
+        T = np.sum(pos_true)
         pos_pred = pred == i
-        P = np.sum(pos_true)
+        P = np.sum(pos_pred)
+        if (P == 0 and T == 0):
+            continue
         TP = np.sum(np.logical_and(pos_true, pos_pred))
-        FP = np.sum(np.logical_and(np.logical_not(pos_true), pos_pred))
-        D[i] = TP / ((P + FP) + 1)
-    return (1 / num_classes) * np.sum(D)
+        #FP = np.sum(np.logical_and(np.logical_not(pos_true), pos_pred))
+        D.append((2 * TP) / (P + T))
+    return sum(D) / len(D)
+
+def mean_dice_no_background(pred, true, num_classes):
+    D = []
+    for i in range(1, num_classes):
+        pos_true = true == i
+        T = np.sum(pos_true)
+        pos_pred = pred == i
+        P = np.sum(pos_pred)
+        if (P == 0 and T == 0):
+            continue
+        TP = np.sum(np.logical_and(pos_true, pos_pred))
+        #FP = np.sum(np.logical_and(np.logical_not(pos_true), pos_pred))
+        D.append((2 * TP) / (P + T))
+    return sum(D) / len(D)
+
 
 def eval_pred(predictions, labels, num_classes):
     (b, h, w) = predictions.shape
     dices = np.zeros(b)
+    dices_no_background = np.zeros(b)
     for i in range(0, b):
         dices[i] = mean_dice(predictions[i,:,:], labels[i,:,:], num_classes)
-    return dices
+        dices_no_background[i] = mean_dice_no_background(predictions[i,:,:], labels[i,:,:], num_classes)
+    return (dices, dices_no_background)
