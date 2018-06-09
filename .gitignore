@@ -9,5 +9,5 @@ __*
 miccai_model.py
 *.mat
 *.txt
-MICCAI_model*
+MICCAI_model_smsv*
 MICsmsv1
