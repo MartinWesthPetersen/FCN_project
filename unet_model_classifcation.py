@@ -211,11 +211,11 @@ def model_fn(features, labels, mode, params):
     predictions = {"classes": tf.argmax(fully_conn_class,axis=1, name="argmax_tensor")}
      #              ,"input_image" : input_tensor}
 
-    print('PREDICTIONS ARE:', predictions['classes'])
 
     if mode == tf.estimator.ModeKeys.PREDICT:
         return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
+    # PASS LABEL TUPLES INSTEAD AND SPLIT UP HERE?
      # Preparing labels and predictions for pixel-wise cross entropy
     flat_labels = tf.cast(labels, dtype = tf.int32)
     print('FLAT LABELS SHAPE:', flat_labels.shape)
@@ -241,24 +241,29 @@ def model_fn(features, labels, mode, params):
                             dim=-1,
                             name=None)
 
+    cross_entropy = tf.cast(cross_entropy, tf.float64)
+    # from stackoverflow
+    weights = features["weights"]
 
-    pw_loss = tf.reduce_sum(cross_entropy, name = "pw_loss")
+    #pw_loss = tf.reduce_sum(cross_entropy, name = "pw_loss")
+    weighted_loss = tf.reduce_sum(weights * cross_entropy, name='weighted_loss')
+
 
 
 # ####################################################################################
 
 
 #     # Batch size normalized loss for logging
-    pw_loss_normalized = tf.divide(pw_loss,
+    pw_loss_normalized = tf.divide(weighted_loss,
                                   tf.cast(tf.shape(input_tensor)[0],
-                                          dtype = tf.float32),
+                                          dtype = tf.float64),
                                           name = "pw_loss_normalized")
 
 
 #     # Choose optimizer and what loss to minimize
     if mode == tf.estimator.ModeKeys.TRAIN:
         optimizer = tf.train.AdamOptimizer(learning_rate = learning_rate)
-        train_op = optimizer.minimize(loss = pw_loss,
+        train_op = optimizer.minimize(loss = weighted_loss, # weighted_loss
                                       global_step=tf.train.get_global_step())
         return tf.estimator.EstimatorSpec(mode=mode, loss=pw_loss_normalized,
                                           train_op=train_op)
@@ -266,5 +271,5 @@ def model_fn(features, labels, mode, params):
     eval_metric_ops = {
             "accuracy": tf.metrics.accuracy(
                     labels=labels, predictions=predictions["classes"])}
-    return tf.estimator.EstimatorSpec(mode=mode, loss=pw_loss,
+    return tf.estimator.EstimatorSpec(mode=mode, loss=weighted_loss,
                                       eval_metric_ops=eval_metric_ops)

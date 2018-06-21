@@ -32,23 +32,20 @@ def create_unet_model(data, num_classes, conv_ksize, num_channels_base,
 
 
 def train_unet_model(data, labels, classifier, batch_size, training_steps,
-                     log_interval):
-
+                     log_interval, weights):
     (b, h, w, c) = data.shape
     data_flat = np.reshape(data, (b, h * w, c)).astype(np.float32)
-    print('labels shape:', labels.shape)
-    labels_flat = np.reshape(labels, (-1, 1)).astype(np.float32)
-    print('flat labels shape:', labels_flat.shape)
+    labels_flat = np.reshape(labels, (-1, 1))
 
 
     # Log the training
-    tensors_to_log = {"loss" : "pw_loss", "loss_norm": "pw_loss_normalized"}
+    tensors_to_log = {"loss" : "weighted_loss", "loss_norm": "pw_loss_normalized"}
     logging_hook = tf.train.LoggingTensorHook(
             tensors = tensors_to_log, every_n_iter = log_interval)
 
     # Create input function for estimator
     train_input_fn = tf.estimator.inputs.numpy_input_fn(
-        x = {"x" : data_flat},
+        x = {"x" : data_flat, "weights": weights},
         y = labels_flat,
         batch_size = batch_size,
         num_epochs = None,

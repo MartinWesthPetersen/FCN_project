@@ -7,22 +7,28 @@ import os
 
 # LOAD TRAIN (AND TEST?) DATA AND LABELS
 train_path = '../mnistSMALL/mnist100_train.p'
-val_path = '../mnistSMALL/mnist10_val.p'
-results_path = 'results/model_performance_val10.p'
+val_path = '../mnistSMALL/mnist100_val.p'
+results_path = 'results/model_performance_val100.p'
 
 # hacky solution to hardcode the amount of images per class in the training set
-nr_examples = 100
+nr_real_examples = 100
+nr_artificial_examples = 0
+weights = [[1.0]*nr_real_examples + [0.5]*nr_artificial_examples for digit in range(10)]
+weights = np.array(weights).flatten()
 
-
+# data has structure: train_dict[digit] = 100 real + 200 artifcial images, stacked
 with open(train_path, 'rb') as handle:
     train_dict = pickle.load(handle)
 train_tensor = np.dstack([train_dict[digit] for digit in train_dict.keys()])
 train_tensor = np.moveaxis(train_tensor,  -1, 0)
 train_tensor = np.expand_dims(train_tensor, axis=3)
+
+# make labels
 train_labels = []
 for digit in train_dict.keys():
-    for _ in range(nr_examples):
+    for _ in range(nr_real_examples + nr_artificial_examples):
         train_labels.append(digit)
+
 train_labels = np.array(train_labels)
 
 with open(val_path, 'rb') as handle:
@@ -45,10 +51,10 @@ bn_decay = 0.9
 model_dir_name = "MNIST_model"
 
 batch_size = 16
-training_steps = 150
+training_steps = 100
 log_interval = 50
 
-rounds = 10
+rounds = 500
 classifier = unet.create_unet_model(train_tensor, num_classes, conv_ksize,
                                     num_channels_base, scale_depth,
                                     learning_rate, bn_decay, model_dir_name)
@@ -63,26 +69,27 @@ model_perf = {'train': [], 'val': []}
 for j in range(rounds):
     print("***** TRAINING MODEL " + str(j) + " *****")
     classifier = unet.train_unet_model(train_tensor, train_labels, classifier, batch_size,
-                                       training_steps, log_interval)
+                                       training_steps, log_interval, weights)
     print("***** EVALUATING MODEL " + str(j) + " *****")
     # Evaluate on training
     train_pred = unet.predict_unet_model(train_tensor, classifier)
     train_acc = unet.compute_accuracy(train_labels, train_pred.flatten())
     model_perf['train'].append(train_acc)
 
-    # Evaluate on test
+    # Evaluate on validation
     val_pred = unet.predict_unet_model(val_tensor, classifier)
     val_acc = unet.compute_accuracy(val_labels, val_pred.flatten())
     model_perf['val'].append(val_acc)
 
-    with open('results/model_performance.p', 'wb') as handle:
+    with open(results_path, 'wb') as handle:
         pickle.dump(model_perf, handle)
 
     print('\n \n ***** RESULTS *****:', model_perf)
 
     # Early stopping criterion
-    if j >= 10:
+    if j >= 50:
         current_val_error = model_perf['val'][j]
-        if model_perf['val'][j-1] >= current_val_error and model_perf['val'][j-2] >= current_val_error:
+        if (model_perf['val'][j-1] >= current_val_error and model_perf['val'][j-2] >= current_val_error
+        and model_perf['val'][j-3] >= current_val_error):
             print('EARLY STOPPING AFTER %s EPROCHS.' %j)
             break
